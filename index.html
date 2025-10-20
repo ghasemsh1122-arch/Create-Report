@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icon-192x192.png">
+  <title>ادغام گزارش بازرسی</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-32x32.png">
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('Service Worker ثبت شد'))
+        .catch(err => console.error('خطا در ثبت Service Worker:', err));
+    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <style>
+    body {
+      font-family: Tahoma, sans-serif;
+      background: #f3f6fb;
+      color: #032433;
+      padding: 20px;
+      direction: rtl;
+      text-align: right;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(8, 34, 63, 0.06);
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 10px;
+      color: #0a7bdc;
+    }
+    button {
+      background: #0a7bdc;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-family: Tahoma;
+    }
+    button:hover {
+      background: #0864b5;
+    }
+    button.secondary {
+      background: #2b6a4a;
+    }
+    button.secondary:hover {
+      background: #1f4f35;
+    }
+    button.ghost {
+      background: #666;
+    }
+    button.ghost:hover {
+      background: #555;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #dropzone {
+      border: 2px dashed #cfe4ff;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      background: #f8fbff;
+      color: #0a66b2;
+      margin-bottom: 10px;
+      transition: background 0.3s;
+    }
+    #dropzone.highlight {
+      background: #eef8ff;
+      border-color: #0a7bdc;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-list {
+      border: 1px solid #e6eef8;
+      border-radius: 8px;
+      background: #fff;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #f0f6ff;
+    }
+    .file-item:last-child {
+      border-bottom: none;
+    }
+    .file-item button {
+      background: #e74c3c;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      border: none;
+      font-size: 12px;
+    }
+    .file-item button:hover {
+      background: #c0392b;
+    }
+    pre {
+      background: #fbfdff;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #e6f0fb;
+      white-space: pre-wrap;
+      direction: rtl;
+      text-align: right;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: Tahoma;
+      font-size: 12px;
+    }
+    .note {
+      font-size: 13px;
+      color: #526b7a;
+      margin-top: 8px;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .download-link {
+      display: block;
+      margin-top: 10px;
+      color: #0a7bdc;
+      word-break: break-word;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .download-link:hover {
+      text-decoration: underline;
+    }
+    .bad {
+      color: #e74c3c;
+    }
+    .success {
+      color: #2b6a4a;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 10px;
+      color: #0a7bdc;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #0a7bdc;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* استایل مودال */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .modal-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-buttons button {
+      flex: 1;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- مودال انتخاب شیفت -->
+  <div id="shiftModal" class="modal">
+    <div class="modal-content">
+      <h3>انتخاب شیفت کاری</h3>
+      <div style="margin: 15px 0;">
+        <label for="shiftName">نام شیفت:</label>
+        <select id="shiftName" style="width: 100%; padding: 8px; margin: 5px 0;">
+          <option value="A">شیفت A</option>
+          <option value="B">شیفت B</option>
+          <option value="C">شیفت C</option>
+          <option value="D">شیفت D</option>
+        </select>
+      </div>
+      <div style="margin: 15px 0;">
+        <label for="shiftType">نوع شیفت:</label>
+        <select id="shiftType" style="width: 100%; padding: 8px; margin: 5px 0;">
+          <option value="صبح کار اول">صبح کار اول</option>
+          <option value="صبح کار دوم">صبح کار دوم</option>
+          <option value="عصر کار اول">عصر کار اول</option>
+          <option value="عصر کار دوم">عصر کار دوم</option>
+          <option value="شب کار اول">شب کار اول</option>
+          <option value="شب کار دوم">شب کار دوم</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button id="confirmShiftBtn" style="background: #2b6a4a;">تایید و ادامه</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- رابط اصلی -->
+  <div class="card">
+    <h1>ادغام فایل‌های بازرسی</h1>
+    <p>فایل‌های JSON را اضافه کنید، سپس دکمهٔ ادغام را بزنید.</p>
+    <label id="dropzone">فایل‌ها را اینجا بکشید یا <button id="pickBtn">انتخاب فایل</button></label>
+    <input id="fileInput" type="file" accept=".json,application/json" multiple />
+    <div class="controls">
+      <button id="processBtn" disabled>ادغام و ساخت اکسل</button>
+      <button id="previewBtn" class="secondary">پیش‌نمایش</button>
+      <button id="clearBtn" class="ghost">پاک کردن همه</button>
+    </div>
+    <div class="note">هر بار می‌توانید فایل جدید انتخاب کنید — فایل‌ها به لیست اضافه می‌شوند. برای حذف یک فایل، دکمهٔ حذف کنار آن را بزنید.</div>
+    <div id="manualLinkArea"></div>
+    <div id="loadingArea" class="loading">
+      <div class="spinner"></div>
+      <p>در حال پردازش و ساخت فایل اکسل...</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>لیست فایل‌های انتخاب‌شده</h3>
+    <div class="file-list" id="fileList">هیچ فایلی اضافه نشده است.</div>
+  </div>
+
+  <div class="card">
+    <h3>لاگ آپلود و پردازش</h3>
+    <pre id="log">هیچ فایلی بارگذاری نشده است.</pre>
+  </div>
+
+  <div class="card" id="summaryCard" style="display:none">
+    <h3>پیش‌نمایش خلاصه</h3>
+    <pre id="summary"></pre>
+  </div>
+
+  <script src="exceljs.min.js"></script>
+  <script>
+    // ===== متغیرهای ثابت =====
+    const EQUIPMENT_LIST = [
+      "G7-102", "G7-103", "G7-104.1", "G7-104.2", "G7-105", "G7-106", "G7-107",
+      "G7-209", "G7-210", "G7-211", "G7-212", "G7-213", "G7-214", "G7-215", "G7-216", "G7-220A", "G7-220B"
+    ];
+
+    // ===== متغیرهای global =====
+    let selectedShiftInfo = localStorage.getItem('shiftInfo') || '';
+
+    // ===== المان‌های DOM =====
+    const dropzone = document.getElementById('dropzone');
+    const pickBtn = document.getElementById('pickBtn');
+    const fileInput = document.getElementById('fileInput');
+    const processBtn = document.getElementById('processBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const fileListEl = document.getElementById('fileList');
+    const logEl = document.getElementById('log');
+    const summaryCard = document.getElementById('summaryCard');
+    const summaryEl = document.getElementById('summary');
+    const manualLinkArea = document.getElementById('manualLinkArea');
+    const loadingArea = document.getElementById('loadingArea');
+    const shiftModal = document.getElementById('shiftModal');
+    const confirmShiftBtn = document.getElementById('confirmShiftBtn');
+
+    let filesState = [];
+
+    // ===== توابع کمکی =====
+    function setLog(txt, isError = false, isSuccess = false) {
+      logEl.textContent = txt;
+      logEl.className = isError ? 'bad' : (isSuccess ? 'success' : '');
+    }
+
+    function appendLog(txt, isError = false, isSuccess = false) {
+      const className = isError ? 'bad' : (isSuccess ? 'success' : '');
+      if (logEl.textContent === 'هیچ فایلی بارگذاری نشده است.') {
+        logEl.textContent = '';
+      }
+      logEl.textContent += (logEl.textContent ? '\n' : '') + txt;
+      if (isError || isSuccess) {
+        logEl.className = className;
+      }
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function resetAll() {
+      filesState = [];
+      renderFileList();
+      setLog('لیست خالی است.');
+      summaryCard.style.display = 'none';
+      manualLinkArea.innerHTML = '';
+      processBtn.disabled = true;
+      fileInput.value = '';
+    }
+
+    function renderFileList() {
+      fileListEl.innerHTML = '';
+      if (filesState.length === 0) {
+        fileListEl.textContent = 'هیچ فایلی اضافه نشده است.';
+        return;
+      }
+      
+      filesState.forEach((f, idx) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = `${idx + 1}. ${f.name} — ${Math.round(f.size / 1024)} KB${f.error ? ' — خطا' : (f.json ? ' — معتبر' : '')}`;
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'حذف';
+        removeBtn.addEventListener('click', () => {
+          filesState.splice(idx, 1);
+          renderFileList();
+          const okCount = filesState.filter(x => x.json).length;
+          processBtn.disabled = okCount === 0;
+          appendLog(`فایل حذف شد: ${f.name}`);
+        });
+        div.appendChild(name);
+        div.appendChild(removeBtn);
+        fileListEl.appendChild(div);
+      });
+    }
+
+    // ===== مدیریت فایل‌ها =====
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('highlight');
+    });
+
+    dropzone.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dropzone.classList.remove('highlight');
+    });
+
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('highlight');
+      handleFiles(Array.from(e.dataTransfer.files || []));
+    });
+
+    pickBtn.addEventListener('click', e => {
+      e.preventDefault();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', e => {
+      handleFiles(Array.from(e.target.files || []));
+    });
+
+    async function handleFiles(list) {
+      if (!list || list.length === 0) {
+        setLog('هیچ فایلی انتخاب نشده', true);
+        return;
+      }
+      
+      appendLog(`دریافت ${list.length} فایل...`);
+      
+      for (const f of list) {
+        const ext = (f.name.split('.').pop() || '').toLowerCase();
+        if (ext !== 'json' && f.type !== 'application/json') {
+          appendLog(`نادیده گرفته شد (فرمت غیر JSON): ${f.name}`, true);
+          continue;
+        }
+        
+        if (filesState.some(x => x.name === f.name && x.size === f.size)) {
+          appendLog(`قبلاً اضافه شده: ${f.name}`);
+          continue;
+        }
+        
+        const entry = { name: f.name, size: f.size, file: f, text: null, json: null, error: null };
+        filesState.push(entry);
+        renderFileList();
+        appendLog(`در حال خواندن: ${f.name}`);
+        
+        try {
+          const txt = await f.text();
+          entry.text = txt;
+          
+          try {
+            entry.json = JSON.parse(txt);
+            appendLog(`پارسه شد: ${f.name}`, false, true);
+          } catch (pe) {
+            entry.error = 'JSON نامعتبر: ' + (pe.message || pe);
+            appendLog(`خطا در پارس JSON: ${f.name} → ${entry.error}`, true);
+          }
+        } catch (re) {
+          entry.error = 'خطا در خواندن: ' + (re.message || re);
+          appendLog(`خطا در خواندن: ${f.name} → ${entry.error}`, true);
+        }
+      }
+      
+      renderFileList();
+      const okCount = filesState.filter(x => x.json).length;
+      processBtn.disabled = okCount === 0;
+      setLog(`${filesState.length} فایل در لیست (${okCount} معتبر)`, false, okCount > 0);
+    }
+
+    // ===== مدیریت شیفت =====
+    confirmShiftBtn.addEventListener('click', function() {
+      const shiftName = document.getElementById('shiftName').value;
+      const shiftType = document.getElementById('shiftType').value;
+      selectedShiftInfo = `${shiftType} شیفت ${shiftName}`;
+      localStorage.setItem('shiftInfo', selectedShiftInfo);
+      shiftModal.style.display = 'none';
+      appendLog(`اطلاعات شیفت ذخیره شد: ${selectedShiftInfo}`, false, true);
+    });
+
+ 
+function showShiftModal() {
+  return new Promise((resolve) => {
+    shiftModal.style.display = 'flex';
+    
+    confirmShiftBtn.onclick = function() {
+      const shiftName = document.getElementById('shiftName').value;
+      const shiftType = document.getElementById('shiftType').value;
+      selectedShiftInfo = `${shiftType} شیفت ${shiftName}`;
+      shiftModal.style.display = 'none';
+      resolve(selectedShiftInfo);
+    };
+  });
+}
+
+    // ===== توابع اکسل =====
+    function addBorderToRange(worksheet, startRow, endRow, startCol, endCol) {
+      for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+          const cell = worksheet.getCell(row, col);
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        }
+      }
+    }
+
+    function createGoogleMapsLink(latitude, longitude) {
+      if (!latitude || !longitude || latitude === '' || longitude === '') {
+        return 'بدون موقعیت';
+      }
+      
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      
+      if (isNaN(lat) || isNaN(lng)) {
+        return 'مختصات نامعتبر';
+      }
+      
+      return `https://www.google.com/maps?q=${lat},${lng}`;
+    }
+
+    // ===== ساخت شیت داشبورد =====
+    async function buildDashboardSheet(wb, equipMap) {
+      appendLog('در حال ساخت داشبورد با لیست ثابت تجهیزات...');
+      
+      const ws = wb.addWorksheet('داشبورد کلی');
+      ws.views = [{ rightToLeft: true }];
+      
+      // جمع‌آوری تمام قطعات از تمام فایل‌ها
+      const allComponents = new Set();
+      
+      for (const [equipment, rows] of equipMap.entries()) {
+        rows.forEach(row => {
+          if (row.Component && row.Component !== "ثبت آیدلر" && row.Component !== "ارتعاش‌سنجی") {
+            allComponents.add(row.Component);
+          }
+        });
+      }
+      
+      // ترتیب خاص قطعات
+      const orderedComponents = [
+        'درام تیل:', 'درام اسنپ تیل:', 'شوت ورودی:', 'نوار:', 'غلطک ها:',
+        'درام تخلیه:', 'درام بندینگ بالا:', 'درام بندینگ پایین:', 'درام بندینگ تیل:',
+        'درام بندینگ هد:', 'درام تنشن:', 'کانترویت:', 'شوت خروجی:', 'درام اسنپ هد:',
+        'درام هد:', 'موتور:', 'کوپلینگ موتور:', 'گیربکس:', '5S:'
+      ];
+      
+      const componentsArray = orderedComponents.filter(comp => allComponents.has(comp));
+      const remainingComponents = Array.from(allComponents).filter(comp => !orderedComponents.includes(comp)).sort();
+      const finalComponents = [...componentsArray, ...remainingComponents];
+      
+      // هدر جدول
+      const headerRow = ['قطعه / تجهیز', ...EQUIPMENT_LIST];
+      ws.addRow(headerRow);
+      
+      // استایل هدر
+      const headerRowObj = ws.getRow(1);
+      headerRowObj.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      headerRowObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+      headerRowObj.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      
+      // اضافه کردن border به هدر
+      addBorderToRange(ws, 1, 1, 1, headerRow.length);
+      
+      // اضافه کردن داده‌ها
+      let rowIndex = 2;
+      for (const component of finalComponents) {
+        const dataRow = [component];
+        
+        // برای هر تجهیز در لیست ثابت
+        for (const equipment of EQUIPMENT_LIST) {
+          const hasProblem = equipMap.has(equipment) && 
+            equipMap.get(equipment).some(row => 
+              row.Component === component && 
+              (String(row.Status || '').toLowerCase().includes('not') || 
+               String(row.Status || '').toLowerCase().includes('nok') ||
+               String(row.Status || '').toLowerCase().includes('نامطلوب'))
+            );
+          dataRow.push(hasProblem ? '✗' : '');
+        }
+        
+        ws.addRow(dataRow);
+        
+        // استایل ردیف
+        const rowObj = ws.getRow(rowIndex);
+        rowObj.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        rowObj.font = { size: 10, name: 'Tahoma' };
+        
+        // اضافه کردن border
+        addBorderToRange(ws, rowIndex, rowIndex, 1, dataRow.length);
+        
+        rowIndex++;
+      }
+      
+      // تنظیم عرض ستون‌ها
+      ws.getColumn(1).width = 25;
+      for (let i = 2; i <= EQUIPMENT_LIST.length + 1; i++) {
+        ws.getColumn(i).width = 8;
+      }
+      
+      // تنظیمات صفحه
+      ws.pageSetup = {
+        orientation: 'landscape',
+        fitToWidth: 1,
+        fitToHeight: 0,
+        paperSize: 9,
+        margins: { left: 0.2, right: 0.2, top: 0.2, bottom: 0.2, header: 0, footer: 0 },
+        horizontalCentered: true
+      };
+      
+      appendLog('داشبورد کلی ساخته شد', false, true);
+    }
+
+  // ===== ساخت گزارش نهایی با سه جدول =====
+async function buildNarrativeSummarySheet(wb, equipMap, allIdlers) {
+  appendLog('در حال ساخت گزارش نهایی با سه جدول...');
+  
+  const ws = wb.addWorksheet('گزارش نهایی');
+  ws.views = [{ rightToLeft: true }];
+  
+  // تنظیم 20 ستون با عرض 4.14
+  for (let i = 1; i <= 20; i++) {
+    ws.getColumn(i).width = 5.00;
+  }
+  
+  // ===== بخش 1: هدر گزارش =====
+  let currentRow = 1;
+  
+  // سربرگ اصلی
+  ws.mergeCells(`A${currentRow}:T${currentRow}`);
+  ws.getCell(`A${currentRow}`).value = 'گزارش تجهیزات خط انتقال';
+  ws.getCell(`A${currentRow}`).font = { bold: true, size: 14, color: { argb: 'FF000000' }, name: 'Tahoma' };
+  ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+  currentRow++;
+  
+  // خط خالی
+  currentRow++;
+  
+  // تاریخ و شیفت - شیفت در 8 ستون مرج شود
+  const today = new Date();
+  const persianDate = today.toLocaleDateString('fa-IR');
+  const shiftInfo = selectedShiftInfo || 'شیفت نامشخص';
+  
+  ws.mergeCells(`A${currentRow}:D${currentRow}`);
+  ws.getCell(`A${currentRow}`).value = 'تاریخ تهیه گزارش:';
+  ws.getCell(`A${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF000000' }, name: 'Tahoma' };
+  ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
+  
+  ws.mergeCells(`E${currentRow}:H${currentRow}`);
+  ws.getCell(`E${currentRow}`).value = persianDate;
+  ws.getCell(`E${currentRow}`).font = { size: 11, color: { argb: 'FF000000' }, name: 'Tahoma' };
+  ws.getCell(`E${currentRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
+  
+  // شیفت در 8 ستون مرج
+  ws.mergeCells(`I${currentRow}:S${currentRow}`);
+  ws.getCell(`I${currentRow}`).value = shiftInfo;
+  ws.getCell(`I${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF000000' }, name: 'Tahoma' };
+  ws.getCell(`I${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+  
+  currentRow++;
+  
+  // خط خالی
+  currentRow++;
+  
+  // ===== بخش 2: جدول اصلی گزارش =====
+  // هدر جدول اصلی با مرج 4-4-12
+  ws.mergeCells(`A${currentRow}:C${currentRow}`);
+  ws.getCell(`A${currentRow}`).value = 'قطعه';
+  ws.getCell(`A${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' }, name: 'Tahoma' };
+  ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+  ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  ws.mergeCells(`D${currentRow}:H${currentRow}`);
+  ws.getCell(`E${currentRow}`).value = 'آیتم';
+  ws.getCell(`E${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' }, name: 'Tahoma' };
+  ws.getCell(`E${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+  ws.getCell(`E${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  ws.mergeCells(`I${currentRow}:T${currentRow}`);
+  ws.getCell(`I${currentRow}`).value = 'توضیحات';
+  ws.getCell(`I${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' }, name: 'Tahoma' };
+  ws.getCell(`I${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+  ws.getCell(`I${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  // استایل هدر جدول - اضافه کردن border
+  for (let col = 1; col <= 20; col++) {
+    const cell = ws.getCell(currentRow, col);
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  }
+  
+  currentRow++;
+  
+  // جمع‌آوری مشکلات و اضافه کردن به جدول اصلی
+  const sortedEquipments = Array.from(equipMap.keys()).sort((a, b) => 
+    a.localeCompare(b, 'fa', { numeric: true })
+  );
+  
+  for (const equipment of sortedEquipments) {
+    const rows = equipMap.get(equipment);
+    const componentMap = new Map();
+    let hasProblems = false;
+    
+    for (const row of rows) {
+      const status = String(row.Status || '').toLowerCase();
+      if (status.includes('not') || status.includes('nok') || status.includes('نامطلوب')) {
+        hasProblems = true;
+        const component = row.Component || 'نامشخص';
+        const item = row.Item || 'نامشخص';
+        const note = row.Note || '';
+        
+        if (!componentMap.has(component)) {
+          componentMap.set(component, []);
+        }
+        
+        componentMap.get(component).push({ item, note });
+      }
+    }
+    
+    if (hasProblems) {
+      // اضافه کردن نام تجهیز
+      ws.mergeCells(`A${currentRow}:T${currentRow}`);
+      ws.getCell(`A${currentRow}`).value = equipment;
+      ws.getCell(`A${currentRow}`).font = { bold: true, size: 16, color: { argb: 'FF000000' }, name: 'Calibri' };
+      ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+      ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F3FF' } };
+      
+      // اضافه کردن border به ردیف تجهیز
+      for (let col = 1; col <= 20; col++) {
+        ws.getCell(currentRow, col).border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      }
+      
+      currentRow++;
+      
+      // اضافه کردن مشکلات با مرج عمودی قطعات
+      for (const [component, items] of componentMap.entries()) {
+        const componentStartRow = currentRow;
+        
+        for (let i = 0; i < items.length; i++) {
+          const itemData = items[i];
+          
+          // ستون قطعه - فقط در اولین ردیف پر شود و سپس مرج عمودی شود
+          if (i === 0) {
+            ws.getCell(`A${currentRow}`).value = component;
+// بعد از اتمام حلقه اضافه کردن داده‌ها، این کد را اضافه کنید:
+for (let row = 6; row <= currentRow; row++) {
+  const cell = ws.getCell(`A${row}`);
+  if (cell.value) {
+    cell.font = { ...cell.font, bold: true };
+  }
+}
+          }
+          
+          // ستون آیتم
+          ws.mergeCells(`D${currentRow}:H${currentRow}`);
+          ws.getCell(`E${currentRow}`).value = itemData.item;
+          
+          // ستون توضیحات
+          ws.mergeCells(`I${currentRow}:T${currentRow}`);
+          ws.getCell(`I${currentRow}`).value = itemData.note;
+          
+          // استایل ردیف
+          for (let col = 1; col <= 20; col++) {
+            const cell = ws.getCell(currentRow, col);
+            cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+            cell.font = { size: 10, name: 'Tahoma' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F8FF' } };
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          }
+          
+          currentRow++;
+        }
+        
+        // مرج عمودی ستون قطعه برای تمام ردیف‌های این قطعه
+        if (items.length > 1) {
+          try {
+            ws.mergeCells(`A${componentStartRow}:C${currentRow - 1}`);
+            // تنظیم استایل برای سلول مرج شده
+            ws.getCell(`A${componentStartRow}`).font = { bold: true, size: 10, color: { argb: 'FF000000' }, name: 'Tahoma' };
+            ws.getCell(`A${componentStartRow}`).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+          } catch (e) {
+            // اگر قبلاً مرج شده، خطا را نادیده بگیر
+          }
+        } else if (items.length === 1) {
+          // اگر فقط یک آیتم دارد، باز هم 4 ستون را مرج کن
+          ws.mergeCells(`A${componentStartRow}:C${componentStartRow}`);
+        }
+      }
+    }
+  }
+  
+  // خط خالی بین جدول‌ها
+  currentRow++;
+  
+  // ===== بخش 3: جدول داشبورد =====
+  // عنوان جدول داشبورد
+  ws.mergeCells(`A${currentRow}:T${currentRow}`);
+  ws.getCell(`A${currentRow}`).value = 'خلاصه وضعیت تجهیزات';
+  ws.getCell(`A${currentRow}`).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' }, name: 'Tahoma' };
+  ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+  ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  // اضافه کردن border به عنوان
+  for (let col = 1; col <= 20; col++) {
+    ws.getCell(currentRow, col).border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  }
+  
+  currentRow++;
+  
+  // هدر جدول داشبورد - ستون قطعه در سه ستون مرج شود
+  const dashboardHeaders = ['', ...EQUIPMENT_LIST.slice(0, 17)]; // 1 + 17 = 18 ستون (تا ستون R)
+  
+  // ستون قطعه در سه ستون مرج
+  ws.mergeCells(`A${currentRow}:C${currentRow}`);
+  ws.getCell(`A${currentRow}`).value = 'قطعه / تجهیز';
+  ws.getCell(`A${currentRow}`).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+  ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+  ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  
+  // ستون‌های تجهیزات
+  for (let i = 1; i < dashboardHeaders.length; i++) {
+    const col = 3 + i; // شروع از ستون D
+    if (col > 20) break;
+    
+    ws.getCell(currentRow, col).value = dashboardHeaders[i];
+    ws.getCell(currentRow, col).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+    ws.getCell(currentRow, col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+    ws.getCell(currentRow, col).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  }
+  
+  // اضافه کردن border به هدر
+  for (let col = 1; col <= 20; col++) {
+    ws.getCell(currentRow, col).border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  }
+  
+  currentRow++;
+  
+  // داده‌های داشبورد
+  const allComponents = new Set();
+  for (const [equipment, rows] of equipMap.entries()) {
+    rows.forEach(row => {
+      if (row.Component && row.Component !== "ثبت آیدلر" && row.Component !== "ارتعاش‌سنجی") {
+        allComponents.add(row.Component);
+      }
+    });
+  }
+  
+  const orderedComponents = [
+    'درام تیل:', 'درام اسنپ تیل:', 'شوت ورودی:', 'نوار:', 'غلطک ها:',
+    'درام تخلیه:', 'درام بندینگ بالا:', 'درام بندینگ پایین:', 'درام بندینگ تیل:',
+    'درام بندینگ هد:', 'درام تنشن:', 'کانترویت:', 'شوت خروجی:', 'درام اسنپ هد:',
+    'درام هد:', 'موتور:', 'کوپلینگ موتور:', 'گیربکس:', '5S:'
+  ];
+  
+  const componentsArray = orderedComponents.filter(comp => allComponents.has(comp));
+  const remainingComponents = Array.from(allComponents).filter(comp => !orderedComponents.includes(comp)).sort();
+  const finalComponents = [...componentsArray, ...remainingComponents];
+  
+  for (const component of finalComponents) {
+    // ستون قطعه در سه ستون مرج
+    ws.mergeCells(`A${currentRow}:C${currentRow}`);
+    ws.getCell(`A${currentRow}`).value = component;
+    ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+    ws.getCell(`A${currentRow}`).font = { size: 8, name: 'Tahoma' };
+    
+    // داده‌های وضعیت
+    for (let i = 1; i < dashboardHeaders.length; i++) {
+      const col = 3 + i;
+      if (col > 20) break;
+      
+      const equipment = dashboardHeaders[i];
+      const hasProblem = equipMap.has(equipment) && 
+        equipMap.get(equipment).some(row => 
+          row.Component === component && 
+          (String(row.Status || '').toLowerCase().includes('not') || 
+           String(row.Status || '').toLowerCase().includes('nok') ||
+           String(row.Status || '').toLowerCase().includes('نامطلوب'))
+        );
+      ws.getCell(currentRow, col).value = hasProblem ? '✗' : '';
+      ws.getCell(currentRow, col).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      ws.getCell(currentRow, col).font = { size: 8, name: 'Tahoma' };
+    }
+    
+    // اضافه کردن border به کل ردیف
+    for (let col = 1; col <= 20; col++) {
+      ws.getCell(currentRow, col).border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+      
+      // رنگ‌آمیزی متناوب
+      if (currentRow % 2 === 0) {
+        ws.getCell(currentRow, col).fill = { 
+          type: 'pattern', 
+          pattern: 'solid', 
+          fgColor: { argb: 'FFF5F5F5' } 
+        };
+      }
+    }
+    
+    currentRow++;
+  }
+  
+  // خط خالی بین جدول‌ها
+  currentRow++;
+  
+// ===== بخش 4: جدول آیدلرها =====
+// عنوان جدول آیدلرها
+ws.mergeCells(`A${currentRow}:T${currentRow}`);
+ws.getCell(`A${currentRow}`).value = 'لیست آیدلرهای مشکل‌دار';
+ws.getCell(`A${currentRow}`).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' }, name: 'Tahoma' };
+ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2b6a4a' } };
+ws.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+
+// اضافه کردن border به عنوان
+for (let col = 1; col <= 20; col++) {
+  ws.getCell(currentRow, col).border = {
+    top: { style: 'thin' },
+    left: { style: 'thin' },
+    bottom: { style: 'thin' },
+    right: { style: 'thin' }
+  };
+}
+
+currentRow++;
+
+// هدر جدول آیدلرها - 6 فیلد، با توزیع مناسب در 20 ستون
+// تجهیز: 3 ستون، شماره: 3 ستون، نوع: 3 ستون، موقعیت: 3 ستون، وضعیت: 4 ستون، مشکل: 4 ستون
+ws.mergeCells(`A${currentRow}:C${currentRow}`);
+ws.getCell(`A${currentRow}`).value = 'تجهیز';
+
+ws.mergeCells(`D${currentRow}:F${currentRow}`);
+ws.getCell(`D${currentRow}`).value = 'شماره';
+
+ws.mergeCells(`G${currentRow}:I${currentRow}`);
+ws.getCell(`G${currentRow}`).value = 'نوع';
+
+ws.mergeCells(`J${currentRow}:L${currentRow}`);
+ws.getCell(`J${currentRow}`).value = 'موقعیت';
+
+ws.mergeCells(`M${currentRow}:P${currentRow}`);
+ws.getCell(`M${currentRow}`).value = 'وضعیت';
+
+ws.mergeCells(`Q${currentRow}:T${currentRow}`);
+ws.getCell(`Q${currentRow}`).value = 'مشکل';
+
+// استایل هدر آیدلرها
+for (let col = 1; col <= 20; col++) {
+  const cell = ws.getCell(currentRow, col);
+  cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2b6a4a' } };
+  cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  cell.border = {
+    top: { style: 'thin' },
+    left: { style: 'thin' },
+    bottom: { style: 'thin' },
+    right: { style: 'thin' }
+  };
+}
+currentRow++;
+
+// داده‌های آیدلرها
+const problemIdlers = allIdlers.filter(idler => 
+  idler.status && (idler.status.includes('بحرانی') || idler.status.includes('در آستانه'))
+);
+
+const sortedIdlers = [...problemIdlers].sort((a, b) => {
+  const equipCompare = (a.sourceEquipment || '').localeCompare(b.sourceEquipment || '', 'fa', { numeric: true });
+  if (equipCompare !== 0) return equipCompare;
+  const numA = parseInt(a.number) || 0;
+  const numB = parseInt(b.number) || 0;
+  return numA - numB;
+});
+
+for (const idler of sortedIdlers) {
+  ws.mergeCells(`A${currentRow}:C${currentRow}`);
+  ws.getCell(`A${currentRow}`).value = idler.sourceEquipment || idler.equipment || 'نامشخص';
+  
+  ws.mergeCells(`D${currentRow}:F${currentRow}`);
+  ws.getCell(`D${currentRow}`).value = idler.number || '';
+  
+  ws.mergeCells(`G${currentRow}:I${currentRow}`);
+  ws.getCell(`G${currentRow}`).value = idler.type || idler.idlerType || ''; // ستون نوع اضافه شد
+  
+  ws.mergeCells(`J${currentRow}:L${currentRow}`);
+  ws.getCell(`J${currentRow}`).value = idler.position || '';
+  
+  ws.mergeCells(`M${currentRow}:P${currentRow}`);
+  ws.getCell(`M${currentRow}`).value = idler.status || '';
+  
+  ws.mergeCells(`Q${currentRow}:T${currentRow}`);
+  ws.getCell(`Q${currentRow}`).value = Array.isArray(idler.problems) && idler.problems.length > 0 
+    ? idler.problems.join(', ') 
+    : 'ندارد';
+  
+  // استایل ردیف داده‌ها
+  for (let col = 1; col <= 20; col++) {
+    const cell = ws.getCell(currentRow, col);
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.font = { size: 9, name: 'Tahoma' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+    
+    // رنگ‌آمیزی متناوب
+    if (currentRow % 2 === 0) {
+      cell.fill = { 
+        type: 'pattern', 
+        pattern: 'solid', 
+        fgColor: { argb: 'FFF5F5F5' } 
+      };
+    }
+  }
+  currentRow++;
+// ===== بخش 5: تنظیم ارتفاع سطرهای جدول اصلی =====
+appendLog('در حال تنظیم ارتفاع سطرهای جدول اصلی...');
+
+// تنظیم ارتفاع برای سطرهای جدول اصلی (از ردیف 6 به بعد)
+for (let rowNumber = 6; rowNumber <= currentRow; rowNumber++) {
+  const row = ws.getRow(rowNumber);
+  
+  // بررسی محتوای ستون توضیحات (I تا T) که معمولاً طولانی‌ترین متن است
+  const noteCell = ws.getCell(`I${rowNumber}`);
+  let noteText = '';
+  
+  if (noteCell.value && typeof noteCell.value === 'string') {
+    noteText = noteCell.value;
+  }
+  
+  // تنظیم ارتفاع بر اساس طول متن توضیحات
+  if (noteText.length > 260) {
+    row.height = 80; // متن بسیار طولانی
+  } else if (noteText.length > 195) {
+    row.height = 60; // متن طولانی
+  } else if (noteText.length > 130) {
+    row.height = 45; // متن متوسط
+  } else if (noteText.length > 65) {
+    row.height = 30; // متن کوتاه
+  } else {
+    row.height = 20; // متن بسیار کوتاه یا خالی
+  }
+  
+  // برای سطرهای عنوان تجهیزات (که در کل عرض مرج شده‌اند) ارتفاع بیشتری در نظر بگیر
+  const equipmentCell = ws.getCell(`A${rowNumber}`);
+  if (equipmentCell.value && equipmentCell.isMerged) {
+    row.height = Math.max(row.height, 20);
+  }
+  
+  // اطمینان از فعال بودن wrapText برای تمام سلولهای این سطر
+  for (let colNumber = 1; colNumber <= 20; colNumber++) {
+    const cell = ws.getCell(rowNumber, colNumber);
+    if (!cell.alignment) {
+      cell.alignment = {};
+    }
+    cell.alignment.wrapText = true;
+    cell.alignment.vertical = 'middle';
+  }
+}
+
+// همچنین ارتفاع سطرهای هدر را نیز تنظیم کنید
+if (ws.getRow(1)) ws.getRow(1).height = 27; // عنوان اصلی
+if (ws.getRow(3)) ws.getRow(3).height = 20; // تاریخ و شیفت
+if (ws.getRow(5)) ws.getRow(5).height = 25; // هدر جدول اصلی
+
+// تنظیمات صفحه - تکرار ردیف‌های 1-5 در چاپ
+ws.pageSetup = {
+  orientation: 'portrait',
+  fitToWidth: 1,
+  fitToHeight: 0,
+  paperSize: 9,
+  margins: { left: 0.2, right: 0.2, top: 0.2, bottom: 0.2, header: 0, footer: 0 },
+  horizontalCentered: true,
+  printTitles: '1:5' // تکرار ردیف‌های 1 تا 5 در هر صفحه
+};
+}
+
+  
+  // تنظیمات صفحه - تکرار ردیف‌های 1-5 در چاپ
+       ws.pageSetup = {
+        orientation: 'portrait',
+        fitToWidth: 1,
+        fitToHeight: 0,
+        paperSize: 9, // A4
+        margins: {
+          left: 0, 
+          right: 0, 
+          top: 0, 
+          bottom: 0,
+          header: 0,
+          footer: 0
+        },
+        horizontalCentered: true
+      };
+      
+      // تنظیم ردیف‌های تکرار شونده در بالای صفحه (سطرهای 1 تا 5)
+      ws.pageSetup.printTitlesRow = '1:5';
+  
+  appendLog('گزارش نهایی با سه جدول ساخته شد', false, true);
+}
+
+
+// ===== ساخت شیت آیدلرها =====
+async function buildIdlerSheet(wb, allIdlers) {
+  appendLog('در حال ساخت شیت لیست آیدلرها...');
+  
+  const ws = wb.addWorksheet('لیست آیدلرها');
+  ws.views = [{ rightToLeft: true }];
+  
+  // عنوان شیت
+  ws.addRow(['لیست آیدلرهای ثبت شده']);
+  ws.mergeCells('A1:F1');
+  ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF000000' } };
+  ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  // خط خالی
+  ws.addRow([]);
+  
+  // هدر جدول با ستون نوع اضافه شده
+  const headers = ['تجهیز', 'شماره', 'نوع', 'موقعیت', 'وضعیت', 'مشکل']; // نوع اضافه شد
+  ws.addRow(headers);
+  
+  // استایل هدر
+  const headerRowObj = ws.getRow(3);
+  headerRowObj.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+  headerRowObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2b6a4a' } };
+  headerRowObj.alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  // اضافه کردن border به هدر
+  addBorderToRange(ws, 3, 3, 1, headers.length);
+  
+  // مرتب‌سازی آیدلرها
+  const sortedIdlers = [...allIdlers].sort((a, b) => {
+    const equipCompare = (a.sourceEquipment || '').localeCompare(b.sourceEquipment || '', 'fa', { numeric: true });
+    if (equipCompare !== 0) return equipCompare;
+    const numA = parseInt(a.number) || 0;
+    const numB = parseInt(b.number) || 0;
+    return numA - numB;
+  });
+  
+  // اضافه کردن داده‌ها
+  let rowIndex = 4;
+  
+  if (sortedIdlers.length === 0) {
+    ws.addRow(['هیچ آیدلری ثبت نشده است']);
+    ws.mergeCells(`A${rowIndex}:F${rowIndex}`);
+    const noDataCell = ws.getCell(`A${rowIndex}`);
+    noDataCell.font = { italic: true, size: 11, color: { argb: 'FF666666' } };
+    noDataCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  } else {
+    for (const idler of sortedIdlers) {
+      const dataRow = [
+  idler.sourceEquipment || idler.equipment || 'نامشخص',
+        idler.number || '',
+        idler.type || idler.idlerType || '', // ستون نوع اضافه شد
+        idler.position || '',
+        idler.status || '',
+        Array.isArray(idler.problems) && idler.problems.length > 0 
+          ? idler.problems.join(', ') 
+          : 'ندارد'
+      ];
+      
+      ws.addRow(dataRow);
+      
+      // استایل ردیف
+      const rowObj = ws.getRow(rowIndex);
+      rowObj.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      rowObj.font = { size: 10, name: 'Tahoma' };
+      
+      // اضافه کردن border
+      addBorderToRange(ws, rowIndex, rowIndex, 1, headers.length);
+      
+      // رنگ‌آمیزی متناوب
+      if (rowIndex % 2 === 0) {
+        for (let col = 1; col <= headers.length; col++) {
+          const cell = ws.getCell(rowIndex, col);
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
+        }
+      }
+      
+      rowIndex++;
+    }
+  }
+  
+  // تنظیم عرض ستون‌ها
+  ws.getColumn(1).width = 15;
+  ws.getColumn(2).width = 20;
+  ws.getColumn(3).width = 15; // عرض ستون نوع
+  ws.getColumn(4).width = 15;
+  ws.getColumn(5).width = 15;
+  ws.getColumn(6).width = 25;
+  
+  // تنظیمات صفحه
+  ws.pageSetup = {
+    orientation: 'landscape',
+    fitToWidth: 1,
+    fitToHeight: 0,
+    paperSize: 9,
+    margins: { left: 0.2, right: 0.2, top: 0.2, bottom: 0.2, header: 0, footer: 0 },
+    horizontalCentered: true
+  };
+  
+  appendLog('شیت لیست آیدلرها ساخته شد', false, true);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ===== ساخت شیت ارتعاش‌سنجی =====
+async function buildVibrationSheet(wb, allVibrationData) {
+  if (allVibrationData.length === 0) {
+    appendLog('هیچ داده ارتعاش‌سنجی برای ساخت شیت وجود ندارد');
+    return;
+  }
+  
+  appendLog('در حال ساخت شیت ارتعاش‌سنجی...');
+  
+  const ws = wb.addWorksheet('ارتعاش‌سنجی');
+  ws.views = [{ rightToLeft: true }];
+  
+  // عنوان شیت
+  ws.addRow(['داده‌های ارتعاش‌سنجی']);
+  ws.mergeCells('A1:G1');
+  ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF000000' } };
+  ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  // خط خالی
+  ws.addRow([]);
+  
+  // هدر جدول
+  const headers = ['تجهیز', 'قطعه', 'موقعیت', 'افقی', 'عمودی', 'محوری', 'دما'];
+  ws.addRow(headers);
+  
+  // استایل هدر
+  const headerRowObj = ws.getRow(3);
+  headerRowObj.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+  headerRowObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A7BDC' } };
+  headerRowObj.alignment = { vertical: 'middle', horizontal: 'center' };
+  
+  // اضافه کردن border به هدر
+  addBorderToRange(ws, 3, 3, 1, headers.length);
+  
+  // مرتب‌سازی داده‌ها بر اساس کد تجهیز
+  const sortedData = [...allVibrationData].sort((a, b) => 
+    (a.sourceEquipment || '').localeCompare(b.sourceEquipment || '', 'fa', { numeric: true })
+  );
+  
+  // تابع برای فرمت کردن اعداد به دو رقم اعشار
+  function formatNumber(value) {
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+    
+    // اگر مقدار عددی است
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      return num.toFixed(2);
+    }
+    
+    // اگر مقدار رشته است و شامل نقطه است
+    if (typeof value === 'string' && value.includes('.')) {
+      const parts = value.split('.');
+      if (parts.length === 2) {
+        const integerPart = parts[0];
+        let decimalPart = parts[1];
+        
+        // اگر اعشار کمتر از ۲ رقم باشد، صفر اضافه کن
+        if (decimalPart.length < 2) {
+          decimalPart = decimalPart.padEnd(2, '0');
+        }
+        // اگر اعشار بیشتر از ۲ رقم باشد، گرد کن
+        else if (decimalPart.length > 2) {
+          decimalPart = decimalPart.substring(0, 2);
+        }
+        
+        return `${integerPart}.${decimalPart}`;
+      }
+    }
+    
+    // در سایر موارد مقدار اصلی را برگردان
+    return value;
+  }
+  
+  // اضافه کردن داده‌ها
+  let rowIndex = 4;
+  
+  for (const data of sortedData) {
+    if (!data || !data.sourceEquipment) continue;
+    
+    const equipment = data.sourceEquipment;
+    const components = [
+      { name: 'موتور', data: data.motor },
+      { name: 'گیربکس', data: data.gearbox }
+    ];
+    
+    for (const comp of components) {
+      if (comp.data) {
+        // پردازش بخش lose (لوز)
+        if (comp.data.lose) {
+          const loseData = comp.data.lose;
+          const dataRow = [
+            equipment,
+            comp.name,
+            'لوز',
+            formatNumber(loseData.horizontal),
+            formatNumber(loseData.vertical),
+            formatNumber(loseData.axial),
+            formatNumber(comp.data.temperature)
+          ];
+          
+          ws.addRow(dataRow);
+          
+          // استایل ردیف
+          const rowObj = ws.getRow(rowIndex);
+          rowObj.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          rowObj.font = { size: 10, name: 'Tahoma' };
+          
+          // اضافه کردن border
+          addBorderToRange(ws, rowIndex, rowIndex, 1, headers.length);
+          
+          // رنگ‌آمیزی متناوب
+          if (rowIndex % 2 === 0) {
+            for (let col = 1; col <= headers.length; col++) {
+              const cell = ws.getCell(rowIndex, col);
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
+            }
+          }
+          
+          rowIndex++;
+        }
+        
+        // پردازش بخش fixe (فیکس)
+        if (comp.data.fixe) {
+          const fixeData = comp.data.fixe;
+          const dataRow = [
+            equipment,
+            comp.name,
+            'فیکس',
+            formatNumber(fixeData.horizontal),
+            formatNumber(fixeData.vertical),
+            formatNumber(fixeData.axial),
+            formatNumber(comp.data.temperature)
+          ];
+          
+          ws.addRow(dataRow);
+          
+          // استایل ردیف
+          const rowObj = ws.getRow(rowIndex);
+          rowObj.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          rowObj.font = { size: 10, name: 'Tahoma' };
+          
+          // اضافه کردن border
+          addBorderToRange(ws, rowIndex, rowIndex, 1, headers.length);
+          
+          // رنگ‌آمیزی متناوب
+          if (rowIndex % 2 === 0) {
+            for (let col = 1; col <= headers.length; col++) {
+              const cell = ws.getCell(rowIndex, col);
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
+            }
+          }
+          
+          rowIndex++;
+        }
+      }
+    }
+  }
+  
+  // تنظیم فرمت عددی برای ستون‌های عددی (افقی، عمودی، محوری، دما)
+  const numberColumns = [4, 5, 6, 7]; // ستون‌های D, E, F, G
+  
+  for (let col of numberColumns) {
+    for (let row = 4; row <= rowIndex; row++) {
+      const cell = ws.getCell(row, col);
+      // اگر مقدار سلول عددی است، فرمت عددی اعشاری تنظیم کن
+      if (cell.value && !isNaN(parseFloat(cell.value))) {
+        cell.numFmt = '0.00';
+      }
+    }
+  }
+  
+  // تنظیم عرض ستون‌ها
+  ws.getColumn(1).width = 20;
+  ws.getColumn(2).width = 15;
+  ws.getColumn(3).width = 10;
+  ws.getColumn(4).width = 10;
+  ws.getColumn(5).width = 10;
+  ws.getColumn(6).width = 10;
+  ws.getColumn(7).width = 10;
+  
+  // تنظیمات صفحه
+  ws.pageSetup = {
+    orientation: 'landscape',
+    fitToWidth: 1,
+    fitToHeight: 0,
+    paperSize: 9,
+    margins: { left: 0.2, right: 0.2, top: 0.2, bottom: 0.2, header: 0, footer: 0 },
+    horizontalCentered: true
+  };
+  
+  appendLog('شیت ارتعاش‌سنجی ساخته شد', false, true);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // ===== ساخت شیت تجهیزات =====
+    async function buildEquipmentSheets(wb, equipMap) {
+      const usedNames = new Set();
+      
+      for (const [equipment, rows] of equipMap.entries()) {
+        let sheetName = equipment.substring(0, 31);
+        let originalName = sheetName;
+        let counter = 1;
+        
+        while (usedNames.has(sheetName)) {
+          sheetName = originalName.slice(0, 28) + '_' + counter;
+          counter++;
+        }
+        usedNames.add(sheetName);
+        
+        const ws = wb.addWorksheet(sheetName);
+        ws.views = [{ rightToLeft: true }];
+        
+        // اضافه کردن هدرها با لینک گوگل مپ
+        const headers = ["PersonnelId", "PersonnelName", "Equipment", "Component", "Item", "Status", "Note", "Timestamp", "Google Maps", "SourceFile"];
+        ws.addRow(headers);
+        
+        // استایل هدرها
+        const headerRowObj = ws.getRow(1);
+        headerRowObj.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+        headerRowObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2b6a4a' } };
+        headerRowObj.alignment = { vertical: 'middle', horizontal: 'center' };
+        
+        // اضافه کردن border به هدرها
+        addBorderToRange(ws, 1, 1, 1, headers.length);
+        
+        // اضافه کردن داده‌ها
+        for (const row of rows) {
+          const dataRow = [
+            row.PersonnelId || '',
+            row.PersonnelName || '',
+            row.Equipment || '',
+            row.Component || '',
+            row.Item || '',
+            row.Status || '',
+            row.Note || '',
+            row.Timestamp || '',
+            createGoogleMapsLink(row.Latitude, row.Longitude),
+            row.SourceFile || ''
+          ];
+          
+          ws.addRow(dataRow);
+        }
+        
+        // استایل‌دهی به داده‌ها
+        for (let i = 2; i <= rows.length + 1; i++) {
+          const rowObj = ws.getRow(i);
+          rowObj.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+          
+          // اضافه کردن border
+          addBorderToRange(ws, i, i, 1, headers.length);
+          
+          // رنگ‌آمیزی متناوب ردیف‌ها
+          if (i % 2 === 0) {
+            for (let j = 1; j <= headers.length; j++) {
+              const cell = ws.getCell(i, j);
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
+            }
+          }
+        }
+        
+        // تنظیم عرض ستون‌ها
+        headers.forEach((_, index) => {
+          ws.getColumn(index + 1).width = 15;
+        });
+        
+        // اضافه کردن فیلتر
+        ws.autoFilter = {
+          from: { row: 1, column: 1 },
+          to: { row: 1, column: headers.length }
+        };
+        
+        appendLog(`شیت "${sheetName}" ساخته شد (${rows.length} ردیف)`, false, true);
+      }
+    }
+
+    // ===== ساخت شیت آیتم‌های بررسی نشده =====
+    async function buildNotInspectedSheet(wb, equipMap) {
+      appendLog('در حال ساخت شیت آیتم‌های بررسی نشده...');
+      
+      const ws = wb.addWorksheet('آیتم‌های بررسی نشده');
+      ws.views = [{ rightToLeft: true }];
+      
+      // عنوان شیت
+      ws.addRow(['لیست آیتم‌های بررسی نشده']);
+      ws.mergeCells('A1:D1');
+      ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF000000' } };
+      ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+      
+      // خط خالی
+      ws.addRow([]);
+      
+      // هدر جدول
+      const headers = ['تجهیز', 'قطعه', 'آیتم', 'بازرس'];
+      ws.addRow(headers);
+      
+      // استایل هدر جدول
+      const headerRowObj = ws.getRow(3);
+      headerRowObj.font = { bold: true, size: 11, color: { argb: 'FF000000' } };
+      headerRowObj.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRowObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFACD' } };
+      
+      // اضافه کردن border به هدر
+      addBorderToRange(ws, 3, 3, 1, headers.length);
+      
+      // جمع‌آوری آیتم‌های بررسی نشده
+      let rowIndex = 4;
+      let hasData = false;
+      
+      const sortedEquipments = Array.from(equipMap.keys()).sort((a, b) => 
+        a.localeCompare(b, 'fa', { numeric: true })
+      );
+      
+      for (const equipment of sortedEquipments) {
+        const rows = equipMap.get(equipment);
+        const equipmentNotInspected = [];
+        
+        for (const row of rows) {
+          const status = String(row.Status || '').toLowerCase().trim();
+          if (status === '' || (!status.includes('ok') && !status.includes('not') && !status.includes('nok') && !status.includes('نامطلوب'))) {
+            equipmentNotInspected.push({
+              equipment: equipment,
+              component: row.Component || 'نامشخص',
+              item: row.Item || 'نامشخص',
+              inspector: row.PersonnelName || 'نامشخص'
+            });
+          }
+        }
+        
+        // اضافه کردن به داده‌ها
+        for (const item of equipmentNotInspected) {
+          const dataRow = [
+            item.equipment,
+            item.component,
+            item.item,
+            item.inspector
+          ];
+          
+          ws.addRow(dataRow);
+          
+          // استایل ردیف
+          const rowObj = ws.getRow(rowIndex);
+          rowObj.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+          
+          // اضافه کردن border
+          addBorderToRange(ws, rowIndex, rowIndex, 1, headers.length);
+          
+          // رنگ‌آمیزی متناوب
+          if (rowIndex % 2 === 0) {
+            for (let i = 1; i <= headers.length; i++) {
+              const cell = ws.getCell(rowIndex, i);
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
+            }
+          }
+          
+          rowIndex++;
+          hasData = true;
+        }
+      }
+      
+      // اگر آیتم بررسی نشده‌ای وجود ندارد
+      if (!hasData) {
+        ws.addRow(['هیچ آیتم بررسی نشده‌ای یافت نشد', '', '', '']);
+        ws.mergeCells(`A${rowIndex}:D${rowIndex}`);
+        const noDataCell = ws.getCell(`A${rowIndex}`);
+        noDataCell.font = { italic: true, size: 11, color: { argb: 'FF666666' } };
+        noDataCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      }
+      
+      // تنظیم عرض ستون‌ها
+      ws.getColumn(1).width = 20;
+      ws.getColumn(2).width = 20;
+      ws.getColumn(3).width = 30;
+      ws.getColumn(4).width = 20;
+      
+      // تنظیمات صفحه
+      ws.pageSetup = {
+        orientation: 'landscape',
+        fitToWidth: 1,
+        fitToHeight: 0,
+        paperSize: 9,
+        margins: { left: 0.2, right: 0.2, top: 0.2, bottom: 0.2, header: 0, footer: 0 },
+        horizontalCentered: true
+      };
+      
+      appendLog('شیت آیتم‌های بررسی نشده ساخته شد', false, true);
+    }
+
+    // ===== تابع اصلی پردازش =====
+    processBtn.addEventListener('click', async () => {
+// همیشه اطلاعات شیفت را بپرس
+  try {
+    selectedShiftInfo = await showShiftModal();
+    appendLog(`اطلاعات شیفت ذخیره شد: ${selectedShiftInfo}`, false, true);
+  } catch {
+    appendLog('عملیات لغو شد', true);
+    return;
+  }
+
+      // بررسی اطلاعات شیفت
+      if (!selectedShiftInfo) {
+        showShiftModal();
+        appendLog('لطفاً اطلاعات شیفت را انتخاب کنید', true);
+        return;
+      }
+
+      const okFiles = filesState.filter(x => x.json);
+      if (okFiles.length === 0) {
+        alert('هیچ فایل JSON معتبری برای پردازش وجود ندارد');
+        return;
+      }
+
+      try {
+        loadingArea.style.display = 'block';
+        processBtn.disabled = true;
+        
+        appendLog('شروع پردازش و ساخت شیت‌ها...');
+        const equipMap = new Map();
+        const allIdlers = [];
+        const allVibrationData = [];
+
+        // پردازش فایل‌ها و جمع‌آوری داده‌ها
+        for (const f of okFiles) {
+          const data = f.json;
+          if (!data) continue;
+          
+          const pid = data.personnelId ?? data.personnelID ?? data.personnel ?? '';
+          const pname = data.personnelName ?? data.personnel_name ?? '';
+          const equipment = data.equipment ?? ('Unknown_' + f.name);
+          const savedAt = data.savedAt ?? data.saved_at ?? '';
+          const comps = Array.isArray(data.components) ? data.components : [];
+          const rows = [];
+
+          // پردازش داده‌های معمولی
+          for (const compObj of comps) {
+            if (!compObj) continue;
+            const compName = compObj.component ?? compObj.name ?? '';
+            const checklist = Array.isArray(compObj.checklist) ? compObj.checklist : [];
+            
+            for (const item of checklist) {
+              if (!item) continue;
+              const itemTitle = item.item ?? item.title ?? '';
+              const status = item.status ?? '';
+              const note = item.note ?? item.comments ?? '';
+              const timestamp = item.timestamp ?? savedAt ?? '';
+              let lat = '', lon = '';
+              
+              if (item.location && typeof item.location === 'object') {
+                lat = item.location.latitude ?? item.location.lat ?? '';
+                lon = item.location.longitude ?? item.location.lng ?? item.location.lon ?? '';
+              }
+              
+              rows.push({
+                PersonnelId: pid,
+                PersonnelName: pname,
+                Equipment: equipment,
+                Component: compName,
+                Item: itemTitle,
+                Status: status,
+                Note: note,
+                Timestamp: timestamp,
+                Latitude: lat,
+                Longitude: lon,
+                SourceFile: f.name
+              });
+            }
+          }
+
+          // تجمیع داده‌های یک تجهیز
+          if (!equipMap.has(equipment)) {
+            equipMap.set(equipment, []);
+          }
+          equipMap.get(equipment).push(...rows);
+
+          // جمع‌آوری آیدلرها
+          if (data.idlers && Array.isArray(data.idlers)) {
+            data.idlers.forEach(idler => {
+              allIdlers.push({
+                ...idler,
+                sourceEquipment: equipment
+              });
+            });
+          }
+
+          // جمع‌آوری داده‌های ارتعاش‌سنجی
+          if (data.components && Array.isArray(data.components)) {
+            data.components.forEach(comp => {
+              if (comp && comp.component === "ارتعاش‌سنجی" && comp.vibrationData) {
+                allVibrationData.push({
+                  ...comp.vibrationData,
+                  sourceEquipment: equipment
+                });
+              }
+            });
+          }
+          
+          appendLog(`فایل ${f.name} → ${rows.length} ردیف استخراج شد`, false, true);
+        }
+
+        // ایجاد workbook
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'Inspection Merger';
+        wb.created = new Date();
+        
+        // ساخت شیت‌ها
+        await buildDashboardSheet(wb, equipMap);
+        await buildNarrativeSummarySheet(wb, equipMap, allIdlers);
+        await buildIdlerSheet(wb, allIdlers);
+        await buildVibrationSheet(wb, allVibrationData);
+        await buildEquipmentSheets(wb, equipMap);
+        await buildNotInspectedSheet(wb, equipMap);
+        
+        // تولید و دانلود فایل
+        appendLog('در حال تولید فایل اکسل...');
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const stamp = (new Date()).toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `inspections_${stamp}.xlsx`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        
+        try {
+          a.click();
+          appendLog('دانلود آغاز شد: ' + filename, false, true);
+          alert('فایل اکسل ساخته و دانلود شد: ' + filename);
+        } catch (e) {
+          appendLog('دانلود خودکار مسدود شد؛ لینک در صفحه قرار گرفت.', true);
+          manualLinkArea.innerHTML = `<a class="download-link" href="${url}" download="${filename}">دانلود فایل اکسل: ${filename}</a>`;
+          alert('دانلود خودکار مسدود شد؛ لطفاً از لینک استفاده کنید.');
+        }
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        
+      } catch (err) {
+        appendLog('خطا در پردازش: ' + (err && err.message ? err.message : String(err)), true);
+        alert('خطا در پردازش. لطفاً لاگ را بررسی کنید.');
+      } finally {
+        loadingArea.style.display = 'none';
+        processBtn.disabled = false;
+      }
+    });
+
+    // ===== توابع دیگر =====
+    previewBtn.addEventListener('click', () => {
+      const ok = filesState.filter(x => x.json);
+      if (ok.length === 0) {
+        alert('هیچ فایل JSON معتبری وجود ندارد');
+        return;
+      }
+      
+      const equipMap = new Map();
+      for (const e of ok) {
+        const data = e.json;
+        const equipment = data && (data.equipment || ('Unknown_' + e.name));
+        const comps = Array.isArray(data.components) ? data.components : [];
+        let cnt = 0;
+        for (const compObj of comps) if (compObj && Array.isArray(compObj.checklist)) cnt += compObj.checklist.length;
+        equipMap.set(equipment, (equipMap.get(equipment) || 0) + cnt);
+      }
+      
+      let out = 'پیش‌نمایش تجهیزات و تعداد آیتم‌ها:\n\n';
+      for (const [eq, cnt] of equipMap.entries()) out += ` - ${eq} : ${cnt} ردیف\n`;
+      
+      summaryCard.style.display = 'block';
+      summaryEl.textContent = out;
+      appendLog('پیش‌نمایش ساخته شد', false, true);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (confirm('آیا از پاک کردن همه فایل‌ها اطمینان دارید؟')) {
+        resetAll();
+      }
+    });
+
+    // راه‌اندازی اولیه
+    resetAll();
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('Service Worker ثبت شد'))
+        .catch(err => console.error('خطا در ثبت Service Worker:', err));
+    }
+  </script>
+</body>
+
+</html>
+
+
+
+
